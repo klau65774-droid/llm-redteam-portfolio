@@ -7,7 +7,7 @@
 import json, os, sys, time
 from llama_cpp import Llama
 
-MODEL = "models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+MODEL = r"D:\AI-Models\gguf\qwen2.5-1.5b-instruct-q4_k_m.gguf"  # 模型已归档至 D 盘
 OUT = "results/raw_results.jsonl"
 MAX_TOKENS = 80
 
