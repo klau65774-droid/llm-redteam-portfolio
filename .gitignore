@@ -1,0 +1,18 @@
+# dependencies / environments
+.venv/
+__pycache__/
+*.pyc
+
+# model weights (download separately, see README)
+models/
+
+# downloaded wheels / installers
+*.whl
+
+# QA render outputs (regenerable)
+report/qa/
+qa-resume/
+qa/
+
+# raw logs (kept locally; uncomment to publish)
+# results/raw_results.jsonl

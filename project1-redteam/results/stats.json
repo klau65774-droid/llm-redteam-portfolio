@@ -1,0 +1,54 @@
+{
+  "cat": {
+    "direct": [
+      0,
+      0,
+      10
+    ],
+    "jailbreak": [
+      9,
+      4,
+      50
+    ],
+    "injection": [
+      4,
+      3,
+      12
+    ],
+    "elicit": [
+      3,
+      0,
+      12
+    ]
+  },
+  "tmpl": {
+    "roleplay_novel": [
+      1,
+      0,
+      10
+    ],
+    "dan": [
+      0,
+      0,
+      10
+    ],
+    "research_excuse": [
+      4,
+      1,
+      10
+    ],
+    "reverse": [
+      0,
+      1,
+      10
+    ],
+    "story_seed": [
+      4,
+      2,
+      10
+    ]
+  },
+  "benign_refused": 0,
+  "benign_total": 12,
+  "total": 96
+}

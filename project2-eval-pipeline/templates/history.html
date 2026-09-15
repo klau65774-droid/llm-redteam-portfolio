@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}历史任务{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>历史任务</h2>
+  {% if jobs %}
+  <table>
+    <tr><th>任务 ID</th><th>模型</th><th>开始时间</th><th>用例数</th><th>总体 ASR</th><th>状态</th><th>操作</th></tr>
+    {% for j in jobs %}
+    <tr>
+      <td>{{ j.job_id }}</td>
+      <td>{{ j.model }}</td>
+      <td>{{ j.started_at }}</td>
+      <td>{{ j.total }}</td>
+      <td>{% if j.asr is not none %}{{ "%.1f%%"|format(j.asr * 100) }}{% else %}-{% endif %}</td>
+      <td><span class="pill {{ j.state }}">{{ {"running":"运行中","finished":"已完成","failed":"失败"}.get(j.state, j.state) }}</span></td>
+      <td>
+        {% if j.has_report %}<a href="/report/{{ j.job_id }}">查看报告</a>{% endif %}
+        {% if j.state == "running" %}<a href="/job/{{ j.job_id }}">看进度</a>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p class="muted">提示：在<a href="/compare">任务对比</a>页可任选两个任务对比 ASR。</p>
+  {% else %}
+  <p class="muted">还没有任务，去<a href="/">发起一次扫描</a>吧。</p>
+  {% endif %}
+</div>
+{% endblock %}

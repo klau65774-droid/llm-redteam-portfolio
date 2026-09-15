@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}任务 {{ job_id }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>扫描进度</h2>
+  <p><b>任务 ID：</b>{{ job_id }}</p>
+  <p>状态：<span id="state" class="pill running">运行中</span>
+     <span id="progress-text" class="muted">准备中…</span></p>
+  <progress id="bar" value="0" max="1"></progress>
+  <p id="current" class="muted"></p>
+  <p id="done-link" style="display:none">
+    <a href="/report/{{ job_id }}"><button>📄 查看报告</button></a>
+    <a href="/history"><button style="background:#6c7a89">返回历史列表</button></a>
+  </p>
+</div>
+<script>
+const jobId = {{ job_id | tojson }};
+async function poll() {
+  try {
+    const r = await fetch(`/api/job/${jobId}`);
+    if (!r.ok) { setTimeout(poll, 2000); return; }
+    const s = await r.json();
+    const total = s.total || 0, done = s.done || 0;
+    document.getElementById("bar").max = total || 1;
+    document.getElementById("bar").value = done;
+    document.getElementById("progress-text").textContent = `已完成 ${done}/${total}`;
+    document.getElementById("current").textContent =
+      s.state === "running" ? `当前用例：${s.current || "…"}` : "";
+    const el = document.getElementById("state");
+    if (s.state === "finished") {
+      el.textContent = "已完成"; el.className = "pill finished";
+      document.getElementById("done-link").style.display = "block";
+      return;  // 停止轮询
+    } else if (s.state === "failed") {
+      el.textContent = "失败"; el.className = "pill failed";
+      document.getElementById("current").textContent = s.error || "";
+      return;
+    }
+  } catch (e) { /* 网络抖动，继续轮询 */ }
+  setTimeout(poll, 1500);
+}
+poll();
+</script>
+{% endblock %}

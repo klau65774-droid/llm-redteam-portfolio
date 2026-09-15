@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}任务对比{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>两个任务的 ASR 对比</h2>
+  <form method="get" action="/compare">
+    <label>任务 A：<input type="text" name="a" value="{{ a }}" placeholder="job_id"></label>
+    <label>任务 B：<input type="text" name="b" value="{{ b }}" placeholder="job_id"></label>
+    <button type="submit">对比</button>
+  </form>
+  {% for e in errors %}<p style="color:#d9534f">{{ e }}</p>{% endfor %}
+</div>
+{% if reports|length == 2 %}
+<div class="card">
+  <table>
+    <tr><th></th><th>{{ reports[0].job_id }}</th><th>{{ reports[1].job_id }}</th></tr>
+    <tr><td>模型</td><td>{{ reports[0].model }}</td><td>{{ reports[1].model }}</td></tr>
+    <tr><td>用例数</td><td>{{ reports[0].total }}</td><td>{{ reports[1].total }}</td></tr>
+    <tr><td><b>总体 ASR</b></td>
+        <td><b>{{ "%.1f%%"|format(reports[0].overall_asr * 100) }}</b></td>
+        <td><b>{{ "%.1f%%"|format(reports[1].overall_asr * 100) }}</b></td></tr>
+  </table>
+  <h3>按攻击类别</h3>
+  <table>
+    <tr><th>类别</th><th>{{ reports[0].job_id }}</th><th>{{ reports[1].job_id }}</th></tr>
+    {% for c in cats %}
+    <tr><td>{{ cat_labels.get(c, c) }}</td>
+      <td>{% if c in reports[0].by_category %}{{ "%.1f%%"|format(reports[0].by_category[c].asr * 100) }} (n={{ reports[0].by_category[c].n }}){% else %}-{% endif %}</td>
+      <td>{% if c in reports[1].by_category %}{{ "%.1f%%"|format(reports[1].by_category[c].asr * 100) }} (n={{ reports[1].by_category[c].n }}){% else %}-{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  <h3>按 OWASP 映射</h3>
+  <table>
+    <tr><th>OWASP</th><th>{{ reports[0].job_id }}</th><th>{{ reports[1].job_id }}</th></tr>
+    {% for o in owasps %}
+    <tr><td>{{ o }}</td>
+      <td>{% if o in reports[0].by_owasp %}{{ "%.1f%%"|format(reports[0].by_owasp[o].asr * 100) }} (n={{ reports[0].by_owasp[o].n }}){% else %}-{% endif %}</td>
+      <td>{% if o in reports[1].by_owasp %}{{ "%.1f%%"|format(reports[1].by_owasp[o].asr * 100) }} (n={{ reports[1].by_owasp[o].n }}){% else %}-{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

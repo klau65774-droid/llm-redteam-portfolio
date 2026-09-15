@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>发起一次安全扫描</h2>
+  {% if not models %}
+  <p style="color:#d9534f">⚠️ 无法连接 Ollama 服务（{{ ollama_base }}），请确认服务已启动后刷新页面。</p>
+  {% endif %}
+  <form method="post" action="/scan">
+    <h3>1. 选择被测模型（来自本机 Ollama）</h3>
+    {% for m in models %}
+    <label><input type="radio" name="model" value="{{ m }}" {{ "checked" if loop.first }}> {{ m }}</label>
+    {% endfor %}
+    <h3>2. 勾选探针包</h3>
+    {% for p in packs %}
+    <label>
+      <input type="checkbox" name="packs" value="{{ p.name }}" {{ "checked" if loop.first }}>
+      <b>{{ p.title }}</b>（{{ p.n_cases }} 条）<br>
+      <span class="muted">{{ p.description }}{% if p.source %}｜出处：{{ p.source }}{% endif %}</span>
+    </label>
+    {% endfor %}
+    <h3>3. 参数</h3>
+    <label>只跑前 N 条（留空为全量）：<input type="number" name="limit" min="1" placeholder="例如 5"></label>
+    <label>最大生成 token 数：<input type="number" name="num_predict" value="512" min="16" max="4096"></label>
+    <p><button type="submit">🚀 开始扫描</button></p>
+  </form>
+</div>
+<div class="card">
+  <h2>这是什么？</h2>
+  <p>一条「提交模型 → 自动扫描 → 可视化报告」的大模型安全评测流水线：
+  内置红队攻击探针包，自动逐条测试被测模型并按 OWASP LLM Top 10 维度统计攻击成功率（ASR），
+  扫描结束自动生成可分享的 HTML 报告。</p>
+</div>
+{% endblock %}

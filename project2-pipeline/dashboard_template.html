@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>红队评测报告 · Red Team Dashboard</title>
+<style>
+  :root {
+    --ink: #1a2332; --acc: #8c1d2f; --gold: #b98a2e;
+    --paper: #f7f5f1; --line: #ddd8cf; --gray: #5a6472; --ok: #1e5e3a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Source Han Serif SC", "Noto Serif SC", Georgia, "Songti SC", serif;
+    background: var(--paper); color: var(--ink); padding-bottom: 60px;
+  }
+  .sans { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  header {
+    background: var(--ink); color: #f2efe9; padding: 34px 5vw 26px;
+    border-bottom: 4px solid var(--acc);
+  }
+  header .kicker { font-size: 12px; letter-spacing: 3px; color: #c8b78a; }
+  header h1 { font-size: 30px; margin: 8px 0 6px; font-weight: 700; }
+  header .meta { font-size: 13px; color: #aab3c0; }
+  main { max-width: 1080px; margin: 0 auto; padding: 28px 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 34px; }
+  .kpi { background: #fff; border: 1px solid var(--line); border-top: 3px solid var(--ink); padding: 16px 18px; }
+  .kpi.warn { border-top-color: var(--acc); }
+  .kpi .num { font-size: 34px; font-weight: 700; font-family: Georgia, serif; }
+  .kpi.warn .num { color: var(--acc); }
+  .kpi .lbl { font-size: 12px; color: var(--gray); margin-top: 4px; }
+  h2 { font-size: 18px; margin: 30px 0 14px; padding-left: 10px; border-left: 4px solid var(--acc); }
+  .panel { background: #fff; border: 1px solid var(--line); padding: 20px 22px; margin-bottom: 14px; }
+  .bar-row { display: grid; grid-template-columns: 130px 1fr 76px; align-items: center; gap: 12px; margin: 10px 0; }
+  .bar-row .name { font-size: 13px; text-align: right; }
+  .bar-track { height: 20px; background: #efece5; position: relative; }
+  .bar-s { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc); }
+  .bar-p { position: absolute; top: 0; bottom: 0; background: var(--gold); }
+  .bar-val { font-size: 13px; font-weight: 700; font-family: Georgia, serif; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .filters button {
+    font-family: inherit; font-size: 13px; padding: 6px 14px; cursor: pointer;
+    background: #fff; border: 1px solid var(--line); color: var(--gray);
+  }
+  .filters button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; background: #fff; }
+  th, td { text-align: left; font-size: 13px; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--ink); color: #fff; font-weight: 600; font-size: 12px; letter-spacing: 1px; }
+  tr.row { cursor: pointer; }
+  tr.row:hover td { background: #faf8f4; }
+  .tag { display: inline-block; font-size: 11px; padding: 2px 9px; border: 1px solid; }
+  .tag.success { color: var(--acc); border-color: var(--acc); }
+  .tag.partial { color: var(--gold); border-color: var(--gold); }
+  .tag.blocked, .tag.benign_ok { color: var(--ok); border-color: var(--ok); }
+  .tag.benign_refused { color: var(--acc); border-color: var(--acc); }
+  .detail td { background: #fbfaf7; font-size: 12.5px; line-height: 1.75; }
+  .detail .box { padding: 6px 0 6px 16px; border-left: 3px solid var(--line); margin: 6px 0 10px; white-space: pre-wrap; word-break: break-word; }
+  .detail .box b { display: block; font-size: 11px; letter-spacing: 2px; color: var(--gray); margin-bottom: 4px; }
+  footer { text-align: center; font-size: 12px; color: var(--gray); margin-top: 40px; }
+  @media (max-width: 720px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker sans">RED TEAM EVALUATION · 自动化安全评测流水线</div>
+  <h1>开源大模型红队评测报告</h1>
+  <div class="meta sans" id="meta"></div>
+</header>
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <h2>分攻击类别成功率</h2>
+  <div class="panel" id="catPanel"></div>
+
+  <h2>越狱模板有效性</h2>
+  <div class="panel" id="tmplPanel"></div>
+
+  <h2>全部测试记录 <span class="sans" style="font-size:12px;color:var(--gray)">（点击行展开提示词与模型输出）</span></h2>
+  <div class="filters sans" id="filters"></div>
+  <table>
+    <thead><tr><th style="width:60px">编号</th><th style="width:110px">类别</th><th style="width:130px">模板/场景</th><th style="width:110px">判定</th><th>提示词（摘要）</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <footer class="sans">pipeline.py · probe → detector → report · 本地离线生成 · kevin_lau 2026</footer>
+</main>
+<script>
+const D = __DATA__;
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+document.getElementById('meta').textContent =
+  `受测模型：${D.model} ｜ 测试用例：${D.total} 条（攻击 ${D.n_atk} / 良性对照 ${D.benign_total}）｜ 判定：规则预筛 + 人工复核`;
+
+document.getElementById('kpis').innerHTML = `
+  <div class="kpi warn"><div class="num">${D.asr}%</div><div class="lbl">攻击成功率 ASR（严格口径，${D.n_s}/${D.n_atk}）</div></div>
+  <div class="kpi"><div class="num">${D.asr2}%</div><div class="lbl">含部分突破（${D.n_s + D.n_p}/${D.n_atk}）</div></div>
+  <div class="kpi warn"><div class="num">${(D.cats.find(c=>c.label==='提示注入')||{}).asr ?? 0}%</div><div class="lbl">提示注入成功率（最薄弱面）</div></div>
+  <div class="kpi"><div class="num">${D.benign_refused === 0 ? '0%' : D.benign_refused}</div><div class="lbl">良性请求过度拒答率</div></div>`;
+
+function barRows(items) {
+  return items.map(c => `
+    <div class="bar-row">
+      <div class="name sans">${c.label}</div>
+      <div class="bar-track">
+        <div class="bar-s" style="width:${c.asr}%"></div>
+        <div class="bar-p" style="left:${c.asr}%;width:${c.asr2 - c.asr}%"></div>
+      </div>
+      <div class="bar-val">${c.asr2}%<span style="font-weight:400;color:var(--gray);font-size:11px"> (${c.s}+${c.p}/${c.n})</span></div>
+    </div>`).join('');
+}
+document.getElementById('catPanel').innerHTML = barRows(D.cats);
+document.getElementById('tmplPanel').innerHTML = barRows(D.tmpls);
+
+let fCat = '全部', fV = '全部';
+const cats = ['全部', ...new Set(D.rows.map(r => r.cat))];
+const vs = ['全部', '完全突破', '部分突破', '成功防御', '正常回答'];
+function drawFilters() {
+  document.getElementById('filters').innerHTML =
+    cats.map(c => `<button class="${c===fCat?'on':''}" onclick="setCat('${c}')">${c}</button>`).join('') +
+    '<span style="width:14px"></span>' +
+    vs.map(v => `<button class="${v===fV?'on':''}" onclick="setV('${v}')">${v}</button>`).join('');
+}
+window.setCat = c => { fCat = c; drawFilters(); drawRows(); };
+window.setV = v => { fV = v; drawFilters(); drawRows(); };
+
+let openId = null;
+function drawRows() {
+  const tb = document.getElementById('tbody');
+  const rows = D.rows.filter(r => (fCat==='全部'||r.cat===fCat) && (fV==='全部'||r.vl===fV));
+  tb.innerHTML = rows.map(r => `
+    <tr class="row" onclick="toggle('${r.id}')">
+      <td class="sans">${r.id}</td><td class="sans">${r.cat}</td><td class="sans">${r.tmpl}</td>
+      <td><span class="tag ${r.v} sans">${r.vl}</span></td>
+      <td>${esc(r.prompt.slice(0, 60))}${r.prompt.length>60?'…':''}</td>
+    </tr>
+    ${openId===r.id ? `<tr class="detail"><td colspan="5">
+      <div class="box"><b>提示词 PROMPT</b>${esc(r.prompt)}</div>
+      <div class="box" style="border-left-color:var(--acc)"><b>模型输出 RESPONSE</b>${esc(r.resp)}</div>
+    </td></tr>` : ''}`).join('');
+}
+window.toggle = id => { openId = openId===id ? null : id; drawRows(); };
+drawFilters(); drawRows();
+</script>
+</body>
+</html>
