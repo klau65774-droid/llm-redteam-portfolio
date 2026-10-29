@@ -25,3 +25,7 @@ project2-eval-pipeline/reports/
 
 # backups written by ollama_judge.py
 *.jsonl.bak
+
+# Local interview / personal notes (never commit)
+*面试*
+*.local.md

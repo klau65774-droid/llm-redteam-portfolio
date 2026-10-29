@@ -60,10 +60,3 @@ python benchmarks/adapters/garak_adapter.py \
 摄取后的数据可直接复用 `project2-eval-pipeline` 渲染单文件 HTML 看板，与本地自研评测结果进行多维对比。
 
 ---
-
-## 4. 面试技术问答要点总结
-
-- **问：既然已经有成熟开源工具，为什么还要自己写？**
-  > **答**：“成熟工具（如 Garak）是通用扫描器，但它们有两大硬伤：一是依赖沉重（动辄要求十几 G 显存和 PyTorch 环境），在本地纯 CPU 或边缘部署环境无法快速落地；二是对推理模型（Reasoning Models）的新型风险面完全缺乏感知——Garak 无法拆解思考过程，当 R1 在 CoT 中泄露敏感推演而最终输出被抑制时，通用工具会给出‘防御成功’的虚假安全感。自己写过一套完整的 `probe -> detector -> judge -> report` 闭环，才清楚工具的检测边界究竟在哪里会骗人。”
-- **问：如何保证自研判定的可信度？**
-  > **答**：“我们不搞‘黑盒自夸’。我们在 `evaluate_judge.py` 中公开了与逐条人工复核真值的混淆矩阵，计算出 Cohen's Kappa 达 0.677（Substantial Agreement），并在 `BENCHMARK_COMPARISON.md` 中展示了我们如何通过适配器与 Promptfoo/Garak 联动互通，用严谨的统计方法学支撑结论。”
