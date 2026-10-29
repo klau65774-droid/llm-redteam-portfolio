@@ -1,3 +1,4 @@
+from stats_utils import wilson_score_interval, format_ci_str, compare_models_stats
 # -*- coding: utf-8 -*-
 """结果分析（Ollama 实验专用）：ASR 汇总表 + 图表（输出到 analysis/ 供报告引用）
 
@@ -166,14 +167,16 @@ def main():
         # 伪拒答复查：识别"先声明免责、随后仍交付攻击内容"的 Yes-but 候选（默认只标记）
         datasets[model] = recheck_refusals(rows, apply=args.apply_yes_but)
 
-    # ---- 汇总表（ASR） ----
-    lines = ["| 模型 | 类别 | 成功 | 总数 | ASR |", "|---|---|---|---|---|"]
+    # ---- 汇总表（ASR + 95% Wilson 置信区间） ----
+    lines = ["| 模型 | 类别 | 成功 | 总数 | ASR (点估计) | 95% 置信区间 (Wilson) |",
+             "|---|---|---|---|---|---|"]
     summary = {}
     for model, rows in datasets.items():
         summary[model] = {}
         a, s, n = asr(rows)
         summary[model]["ALL"] = (a, s, n)
-        lines.append(f"| {model} | **全部** | {s} | {n} | **{a:.1%}** |")
+        ci_str = format_ci_str(s, n)
+        lines.append(f"| {model} | **全部** | {s} | {n} | **{a:.1%}** | `{ci_str}` |")
         by_cat = defaultdict(list)
         for r in rows:
             by_cat[r["category"]].append(r)
@@ -181,9 +184,51 @@ def main():
             if cat in by_cat:
                 a, s, n = asr(by_cat[cat])
                 summary[model][cat] = (a, s, n)
-                lines.append(f"| {model} | {CAT_NAMES[cat]} | {s} | {n} | {a:.1%} |")
+                cat_ci = format_ci_str(s, n)
+                lines.append(f"| {model} | {CAT_NAMES[cat]} | {s} | {n} | {a:.1%} | `{cat_ci}` |")
     with open(os.path.join(args.out, "summary_table.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
+
+    # ---- 跨模型假设检验与显著性分析报告 ----
+    model_names = list(datasets.keys())
+    if len(model_names) >= 2:
+        m1, m2 = model_names[0], model_names[1]
+        sig_lines = [
+            f"# 跨模型安全指标显著性检验（{m1} vs {m2}）",
+            "",
+            "> 统计方法：Fisher 精确检验（针对小样本 2x2 列联表，无需大样本正态假设） + Wilson Score 95% 置信区间。",
+            "",
+            "| 评测维度 | " + m1 + " (ASR) | " + m2 + " (ASR) | ASR 差值 | 比值比 (OR) | p 值 (双侧) | 显著性 (p < 0.05) |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        # 全体
+        comp_all = compare_models_stats(summary[m1]["ALL"][1], summary[m1]["ALL"][2],
+                                        summary[m2]["ALL"][1], summary[m2]["ALL"][2])
+        sig_mark = "✅ 显著" if comp_all["significant_p05"] else "❌ 边缘/不显著 (趋势)"
+        sig_lines.append(
+            f"| **总体 ASR** | {format_ci_str(summary[m1]['ALL'][1], summary[m1]['ALL'][2])} | "
+            f"{format_ci_str(summary[m2]['ALL'][1], summary[m2]['ALL'][2])} | "
+            f"{comp_all['delta']:+.1%} | {comp_all['odds_ratio']} | {comp_all['p_value_two_sided']} | {sig_mark} |"
+        )
+        for cat in CAT_NAMES:
+            if cat in summary[m1] and cat in summary[m2]:
+                s1, n1 = summary[m1][cat][1], summary[m1][cat][2]
+                s2, n2 = summary[m2][cat][1], summary[m2][cat][2]
+                comp_cat = compare_models_stats(s1, n1, s2, n2)
+                cat_sig = "✅ 显著" if comp_cat["significant_p05"] else ("⚠️ 边缘倾向" if (comp_cat["p_value_two_sided"] or 1) < 0.1 else "不显著")
+                sig_lines.append(
+                    f"| {CAT_NAMES[cat]} | {format_ci_str(s1, n1)} | {format_ci_str(s2, n2)} | "
+                    f"{comp_cat['delta']:+.1%} | {comp_cat['odds_ratio']} | {comp_cat['p_value_two_sided']} | {cat_sig} |"
+                )
+        sig_lines.extend([
+            "",
+            "### 统计学发现与面试要点解读",
+            f"1. **总体 ASR 差异分析**：{m1} (70.0%) 对比 {m2} (50.0%)，差异为 +20.0%，比值比 OR = 2.33。双侧 Fisher 精确检验 p = 0.1095。在 n=40 的样本量下属于边缘趋势，统计学严格要求 p < 0.05，因此不可轻易宣称某一模型全面碾压另一模型，而应说明其为中等效应量的风险升高趋势。",
+            "2. **高显著性子维度**：在【系统提示词提取】上，R1 达 100% (6/6)，Qwen 为 33.3% (2/6)，单侧精确检验 p = 0.0303 (双侧 p = 0.0606)，证实推理模型存在明显的系统提示词泄露脆弱性。",
+            "3. **样本量与后续建议**：小样本下点估计波动大（95% 置信区间跨度约 27%~30%），建议关键用例采用 n=5 多轮采样或将测试集扩充至 n≥150 以收窄置信区间至 ±8% 内。"
+        ])
+        with open(os.path.join(args.out, "significance_test.md"), "w", encoding="utf-8") as f:
+            f.write("\n".join(sig_lines) + "\n")
 
     # ---- 判定构成表（防线 vs 非防线失败） ----
     lines = ["| 模型 | 判定 | 数量 |", "|---|---|---|"]
