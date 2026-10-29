@@ -1,17 +1,13 @@
 # -*- coding: utf-8 -*-
 """生成报告用图表"""
-import sys, os
-from pathlib import Path
-sys.path.insert(0, str(Path(sys.executable).parent.parent.parent))
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
-try:
-    from daimon_runtime import setup_plot; setup_plot()
-except Exception:
-    plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
-    plt.rcParams["axes.unicode_minus"] = False
+# 中文字体：依次回退（Windows / macOS / Linux 常见中文字体），都没有则用默认字体
+plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei", "PingFang SC",
+                                   "Noto Sans CJK SC", "WenQuanYi Micro Hei", "DejaVu Sans"]
+plt.rcParams["axes.unicode_minus"] = False
 
 INK, ACC, GRAY, GOLD = "#1a2332", "#8c1d2f", "#8a93a1", "#b98a2e"
 

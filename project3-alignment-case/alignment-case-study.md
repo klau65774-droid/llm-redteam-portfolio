@@ -1,6 +1,6 @@
 # 对齐失败案例深度复盘：从 Alignment Faking 到 OAI-HF 事件
 
-**作者：kevin_lau | 求职方向：大模型红队 / 安全评测工程师**
+**作者：kevin_lau**
 **完成日期：2026-09-15**
 **说明：本文所有关键数字均查证自一手来源（Anthropic 官网、arXiv 原文、OpenAI System Card、METR 官网等），逐条依据见同目录 `sources.md`。查不到确证的内容在文中明确标注。**
 

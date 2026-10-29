@@ -93,9 +93,14 @@ python app.py   # 打开 http://127.0.0.1:5000
 ```
 
 **OWASP 映射依据**：采用 [OWASP Top 10 for LLM Applications 2025](https://genai.owasp.org/llm-top-10/)
-（2024-11 发布的 v2.0 正式版）编号：LLM01 Prompt Injection、LLM02 Sensitive Information Disclosure、
-LLM07 System Prompt Leakage。内置包的映射关系：`direct_jailbreak / prompt_injection / encoding_bypass → LLM01`，
-`sensitive_induction → LLM02`，`system_prompt_extract → LLM07`。
+（2024-11 发布的 v2.0 正式版）编号：LLM01 Prompt Injection、LLM07 System Prompt Leakage。
+内置包的映射关系：`direct_jailbreak / prompt_injection / encoding_bypass / sensitive_induction → LLM01`，
+`system_prompt_extract → LLM07`。
+
+> **关于 `sensitive_induction`**：该类用例是「借培训 / 学术 / 小说等语境诱导模型输出有害内容」，本质是越狱，
+> OWASP 2025 将 jailbreaking 归入 LLM01。它**不是** LLM02（Sensitive Information Disclosure，指模型泄露
+> 训练数据、PII、凭据等敏感信息）——早期版本曾误映射为 LLM02，已更正。OWASP LLM Top 10 没有专门的
+> “有害内容生成”条目，因此按类别（category）维度的 ASR 比按 OWASP 维度的更有信息量。
 
 内置探针包 `redteam_basic`（40 条）改编自本作品集项目 1 `project1-redteam/attacks.json`（作者：kevin_lau），
 在其用例之上补充了 OWASP 映射；原文件未做任何改动。
@@ -113,7 +118,7 @@ LLM07 System Prompt Leakage。内置包的映射关系：`direct_jailbreak / pro
 
 ## 与 garak / inspect_ai 的关系
 
-本工具是**自研轻量引擎**，不是对二者的封装（garak 依赖 torch 等重型库，不适合 10GB 余量的演示环境）：
+本工具是**自研轻量引擎**，不是对二者的封装（garak 依赖 torch 等重型库，安装体积大；对照实验见仓库根目录 `comparison/`）：
 
 - 探针包机制参考了 **garak** 的 probe 概念：攻击用例与执行引擎解耦，包即文件、放入即用。
   扩展点上预留了适配层——编写适配器把 garak probe 产出的 prompts 转成本包的 `cases` 结构即可，
@@ -127,7 +132,7 @@ LLM07 System Prompt Leakage。内置包的映射关系：`direct_jailbreak / pro
 > 📷 `docs/screenshot-job.png`：任务进度页（实时轮询）
 > 📷 `docs/screenshot-report.png`：HTML 报告（ASR 图表 + 明细表）
 >
-> （截图待补充；`reports/smoke-cli/report.html` 为冒烟测试留下的真实示例报告，可直接打开预览。）
+> （截图待补充；仓库不再提交 2 条用例的冒烟测试报告——样本量太小，ASR=0% 没有参考意义。跑一次真实扫描即可生成。）
 
 ## 目录结构
 
@@ -143,7 +148,7 @@ project2-eval-pipeline/
 ├── probes/
 │   └── redteam_basic.json  # 内置探针包（40 条，含 OWASP 映射）
 ├── templates/              # Jinja2 模板（base/index/job/history/compare）
-├── reports/                # 扫描产物（含验证用示例任务）
+├── reports/                # 扫描产物（运行时生成，已加入 .gitignore）
 └── README.md
 ```
 

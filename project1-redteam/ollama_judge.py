@@ -14,6 +14,9 @@
   rec["verdict"] = success / refused / unclear / error（兼容下游 ollama_analyze.py）
   rec["judge_source"] = "llm" | "rules"
 
+安全措施：默认原地写回，但写之前会把原文件备份为 <文件>.bak（已存在则不覆盖备份）；
+已有人工复核结论（manual_review 字段）的记录会被跳过，不会被裁判结果覆盖（--force 可关闭）。
+
 用法：
   python ollama_judge.py --input results/deepseek-r1_7b.jsonl --judge-model qwen2.5:3b
   # 或纯规则模式（无裁判模型时）：
@@ -25,6 +28,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import sys
 import time
 
@@ -183,6 +187,8 @@ def parse_args() -> argparse.Namespace:
     ap.add_argument("--output", default=None, help="输出路径（默认覆盖输入）")
     ap.add_argument("--no-llm", action="store_true", help="纯规则模式（离线可跑）")
     ap.add_argument("--timeout", type=int, default=180)
+    ap.add_argument("--force", action="store_true",
+                    help="也重新判定已有人工复核结论（manual_review）的记录（默认跳过）")
     return ap.parse_args()
 
 
@@ -197,6 +203,8 @@ def main() -> int:
                     rows.append(json.loads(line))
 
         for rec in rows:
+            if rec.get("manual_review") and not args.force:
+                continue  # 保留人工复核结论
             judge_obj = None
             if not args.no_llm and not rec.get("error"):
                 judge_obj = llm_judge(args.base_url, args.judge_model, rec,
@@ -216,6 +224,9 @@ def main() -> int:
         if len(args.input) > 1 and args.output:
             ap_base = os.path.splitext(os.path.basename(path))[0]
             dest = os.path.join(args.output, f"{ap_base}.judged.jsonl")
+        if os.path.abspath(dest) == os.path.abspath(path) and not os.path.exists(path + ".bak"):
+            shutil.copyfile(path, path + ".bak")
+            log.info("已备份原文件 -> %s.bak", os.path.basename(path))
         with open(dest, "w", encoding="utf-8") as f:
             for rec in rows:
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")

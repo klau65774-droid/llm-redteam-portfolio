@@ -3,7 +3,7 @@
 
 命令：
   run    --model <ollama模型> --packs redteam_basic [--limit N] [--num-predict M]
-         [--job-id ID] [--no-resume]   执行扫描并生成报告
+         [--job-id ID] [--no-resume] [--temperature T] [--seed S]   执行扫描并生成报告
   packs                               列出可用探针包
   report --job <job目录>              对已有结果重新生成报告
 """
@@ -34,6 +34,8 @@ def main(argv=None):
     p_run.add_argument("--packs", required=True, help="探针包名，逗号分隔")
     p_run.add_argument("--limit", type=int, default=None, help="只跑前 N 条（调试用）")
     p_run.add_argument("--num-predict", type=int, default=512, help="最大生成 token 数")
+    p_run.add_argument("--temperature", type=float, default=0.7, help="采样温度（默认 0.7）")
+    p_run.add_argument("--seed", type=int, default=42, help="随机种子（默认 42，保证可复现）")
     p_run.add_argument("--job-id", default=None, help="任务 ID（默认自动生成）")
     p_run.add_argument("--no-resume", action="store_true", help="不续跑，清空旧结果重跑")
 
@@ -59,6 +61,7 @@ def main(argv=None):
         try:
             meta = run_scan(args.model, pack_names, job_dir,
                             limit=args.limit, num_predict=args.num_predict,
+                            temperature=args.temperature, seed=args.seed,
                             resume=not args.no_resume,
                             progress_cb=_fmt_progress)
         except probes_mod.ProbePackError as e:

@@ -22,11 +22,15 @@ from .probes import collect_cases
 OLLAMA_BASE = os.environ.get("OLLAMA_BASE", "http://localhost:11434")
 DEFAULT_NUM_PREDICT = 512
 DEFAULT_TIMEOUT = 180
+DEFAULT_TEMPERATURE = 0.7   # 与 project1 的 ollama_runner.py 保持一致
+DEFAULT_SEED = 42           # 固定 seed：同模型同参数下结果可复现（仍受 Ollama 版本影响）
 
 
 def chat(model: str, prompt: str, system: str = None,
          num_predict: int = DEFAULT_NUM_PREDICT,
-         timeout: int = DEFAULT_TIMEOUT) -> dict:
+         timeout: int = DEFAULT_TIMEOUT,
+         temperature: float = DEFAULT_TEMPERATURE,
+         seed: int = DEFAULT_SEED) -> dict:
     """调用 Ollama /api/chat，返回统一结构（含耗时、token 数、是否截断）。"""
     messages = []
     if system:
@@ -36,7 +40,8 @@ def chat(model: str, prompt: str, system: str = None,
         "model": model,
         "messages": messages,
         "stream": False,
-        "options": {"num_predict": num_predict},
+        "options": {"num_predict": num_predict, "temperature": temperature,
+                    "seed": seed},
     }
     t0 = time.time()
     try:
@@ -86,7 +91,8 @@ def _load_done_ids(results_path: str) -> set:
 def run_scan(model: str, pack_names: list, job_dir: str,
              limit: int = None, num_predict: int = DEFAULT_NUM_PREDICT,
              probes_dir: str = None, resume: bool = True,
-             progress_cb=None) -> dict:
+             progress_cb=None, temperature: float = DEFAULT_TEMPERATURE,
+             seed: int = DEFAULT_SEED) -> dict:
     """执行一次完整扫描。返回汇总统计字典。
 
     progress_cb(status_dict) 在每条用例完成后回调（供 Web 实时进度）。
@@ -114,6 +120,8 @@ def run_scan(model: str, pack_names: list, job_dir: str,
         "packs_detail": packs_meta,
         "limit": limit,
         "num_predict": num_predict,
+        "temperature": temperature,
+        "seed": seed,
         "ollama_base": OLLAMA_BASE,
         "started_at": datetime.now().isoformat(timespec="seconds"),
         "total": total,
@@ -132,7 +140,8 @@ def run_scan(model: str, pack_names: list, job_dir: str,
             status["current"] = case["id"]
             _write_json(status_path, status)
             resp = chat(model, case["prompt"], system=case.get("system"),
-                        num_predict=num_predict)
+                        num_predict=num_predict, temperature=temperature,
+                        seed=seed)
             rec = {**case, **resp}
             rec["verdict"] = judge_record(rec)
             counts[rec["verdict"]] += 1

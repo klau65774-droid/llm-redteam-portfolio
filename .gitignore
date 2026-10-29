@@ -19,3 +19,9 @@ qa/
 
 # raw logs (kept locally; uncomment to publish)
 # results/raw_results.jsonl
+
+# scan outputs (generated at runtime)
+project2-eval-pipeline/reports/
+
+# backups written by ollama_judge.py
+*.jsonl.bak
