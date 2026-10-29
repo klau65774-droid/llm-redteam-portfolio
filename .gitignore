@@ -9,6 +9,9 @@ models/
 # downloaded wheels / installers
 *.whl
 
+# local configuration (never commit secrets)
+.env
+
 # QA render outputs (regenerable)
 report/qa/
 qa-resume/

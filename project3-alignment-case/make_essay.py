@@ -13,8 +13,24 @@ from reportlab.platypus import (BaseDocTemplate, PageTemplate, Frame, Paragraph,
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-pdfmetrics.registerFont(TTFont('CJK', os.environ['DAIMON_CJK_FONT_REGULAR']))
-pdfmetrics.registerFont(TTFont('CJK-B', os.environ['DAIMON_CJK_FONT_BOLD']))
+def _find_cjk_font(env_key, windows_candidates):
+    """字体路径解析：环境变量 > 常见系统路径；找不到时给出可操作的报错。"""
+    p = os.environ.get(env_key)
+    if p and os.path.exists(p):
+        return p
+    base = os.environ.get('SystemRoot', r'C:\Windows')
+    for name in windows_candidates:
+        cand = os.path.join(base, 'Fonts', name)
+        if os.path.exists(cand):
+            return cand
+    raise SystemExit(
+        f"未找到中文字体。请设置环境变量 {env_key} 指向一个中文 TTF 文件，"
+        f"或在 Windows Fonts 目录安装以下任一字体: {windows_candidates}")
+
+pdfmetrics.registerFont(TTFont('CJK', _find_cjk_font(
+    'CJK_FONT_REGULAR', ['msyh.ttc', 'simhei.ttf', 'simsun.ttc'])))
+pdfmetrics.registerFont(TTFont('CJK-B', _find_cjk_font(
+    'CJK_FONT_BOLD', ['msyhbd.ttc', 'simhei.ttf'])))
 pdfmetrics.registerFontFamily('CJK', normal='CJK', bold='CJK-B',
                               italic='CJK', boldItalic='CJK-B')
 
