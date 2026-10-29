@@ -1,0 +1,15 @@
+# ---- 核心依赖（全部脚本共用） ----
+requests>=2.31
+tqdm>=4.66
+
+# ---- 项目 1：红队测试 ----
+llama-cpp-python>=0.2.80      # GGUF 本地推理（CPU 可跑，Linux 下可用 openblas 预编译版）
+matplotlib>=3.8               # 分析图表
+numpy>=1.24
+
+# ---- 项目 2：评测流水线 ----
+flask>=3.0                    # project2-eval-pipeline 的 Web 报告工具
+jinja2>=3.1                   # flask 模板（repo 内 templates/）
+
+# ---- 项目 3：对齐案例分析 ----
+reportlab>=4.0                # 中文 PDF 生成（make_essay.py）
